@@ -54,6 +54,9 @@ func Provider() *schema.Provider {
 				DefaultFunc: schema.EnvDefaultFunc("INFOBLOX_TIMEOUT", 30),
 			},
 		},
+		DataSourcesMap: map[string]*schema.Resource{
+			"infoblox_record": dataSourceInfobloxRecord(),
+		},
 		ResourcesMap: map[string]*schema.Resource{
 			"infoblox_host_record": resourceInfobloxHostRecord(),
 		},

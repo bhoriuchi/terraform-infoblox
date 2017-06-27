@@ -10,21 +10,6 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-type Object struct {
-	Ref string `json:"_ref"`
-}
-type Host struct {
-	Object
-	Name, View string
-	Ttl        int
-	Use_Ttl    bool
-	Ipv4addrs  []Ipv4
-}
-type Ipv4 struct {
-	Object
-	Host, Ipv4addr     string
-	Configure_for_dhcp bool
-}
 type WapiError struct {
 	Error, Code, Text string
 }
