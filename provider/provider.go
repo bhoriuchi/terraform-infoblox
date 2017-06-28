@@ -55,10 +55,12 @@ func Provider() *schema.Provider {
 			},
 		},
 		DataSourcesMap: map[string]*schema.Resource{
-			"infoblox_record": dataSourceInfobloxRecord(),
+			"infoblox_a_records": 		dataSourceInfobloxAnameRecords(),
+			"infoblox_host_records": 	dataSourceInfobloxHostRecords(),
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"infoblox_host_record": resourceInfobloxHostRecord(),
+			"infoblox_a_record": 		resourceInfobloxAnameRecord(),
+			"infoblox_host_record": 	resourceInfobloxHostRecord(),
 		},
 		ConfigureFunc: providerConfigure,
 	}

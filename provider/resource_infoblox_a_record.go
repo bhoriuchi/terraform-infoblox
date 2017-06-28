@@ -8,12 +8,12 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-func resourceInfobloxHostRecord() *schema.Resource {
+func resourceInfobloxAnameRecord() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceInfobloxHostRecordCreate,
-		Read:   resourceInfobloxHostRecordRead,
-		Update: resourceInfobloxHostRecordUpdate,
-		Delete: resourceInfobloxHostRecordDelete,
+		Create: resourceInfobloxAnameRecordCreate,
+		Read:   resourceInfobloxAnameRecordRead,
+		Update: resourceInfobloxAnameRecordUpdate,
+		Delete: resourceInfobloxAnameRecordDelete,
 
 		Schema: map[string]*schema.Schema{
 			"domain": &schema.Schema{
@@ -24,6 +24,18 @@ func resourceInfobloxHostRecord() *schema.Resource {
 			},
 			"name": &schema.Schema{
 				Description: "The subdomain of the record",
+				Type:        schema.TypeString,
+				Optional:    true,
+				ForceNew:    true,
+			},
+			"name_prefix": &schema.Schema{
+				Description: "Name generation prefix",
+				Type:        schema.TypeString,
+				Optional:    true,
+				ForceNew:    true,
+			},
+			"name_index_pad": &schema.Schema{
+				Description: "Name generation index padding length. Pads with leading 0s",
 				Type:        schema.TypeString,
 				Optional:    true,
 				ForceNew:    true,
@@ -43,9 +55,11 @@ func resourceInfobloxHostRecord() *schema.Resource {
 	}
 }
 
-func resourceInfobloxHostRecordCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceInfobloxAnameRecordCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("\n[infoblox-provider] %s", "----------------- host record create")
-	name := d.Get("name").(string) + "." + d.Get("domain").(string)
+	name := d.Get("name").(string)
+	domain := d.Get("domain").(string)
+	fqdn := name + "." + domain
 	ipv4 := d.Get("ipv4").(string)
 	ttl := d.Get("ttl").(int)
 
@@ -53,7 +67,7 @@ func resourceInfobloxHostRecordCreate(d *schema.ResourceData, meta interface{}) 
 	resp, err := resty.R().
 		SetError(&wapiErr).
 		SetBody(map[string]interface{}{
-			"name": name,
+			"name": fqdn,
 			"ipv4addrs": []map[string]interface{}{
 				map[string]interface{}{
 					"ipv4addr": ipv4,
@@ -62,17 +76,17 @@ func resourceInfobloxHostRecordCreate(d *schema.ResourceData, meta interface{}) 
 			"ttl":     ttl,
 			"use_ttl": true,
 		}).
-		Post("/record:host")
+		Post("/record:a")
 	if handler := handleError(err, resp, wapiErr); handler != nil {
 		return handler
 	}
 	d.SetId(strings.Replace(resp.String(), "\"", "", 2))
-	return resourceInfobloxHostRecordRead(d, meta)
+	return resourceInfobloxAnameRecordRead(d, meta)
 }
 
-func resourceInfobloxHostRecordRead(d *schema.ResourceData, meta interface{}) error {
+func resourceInfobloxAnameRecordRead(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("\n[infoblox-provider] %s", "----------------- host record read")
-	host := Host{}
+	host := A{}
 	wapiErr := WapiError{}
 	resp, err := resty.R().
 		SetResult(&host).
@@ -89,13 +103,13 @@ func resourceInfobloxHostRecordRead(d *schema.ResourceData, meta interface{}) er
 	d.Set("fqdn", host.Name)
 	d.Set("name", splitFqdn[0])
 	d.Set("domain", strings.Join(splitFqdn[1:], "."))
-	d.Set("ipv4", host.Ipv4addrs[0].Ipv4addr)
+	d.Set("ipv4", host.Ipv4addr)
 	d.Set("ttl", host.Ttl)
 	d.Set("view", host.View)
 	return nil
 }
 
-func resourceInfobloxHostRecordUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceInfobloxAnameRecordUpdate(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("\n[infoblox-provider] %s", "----------------- host record update")
 	ipv4 := d.Get("ipv4").(string)
 
@@ -103,20 +117,16 @@ func resourceInfobloxHostRecordUpdate(d *schema.ResourceData, meta interface{}) 
 	resp, err := resty.R().
 		SetError(&wapiErr).
 		SetBody(map[string]interface{}{
-			"ipv4addrs": []map[string]interface{}{
-				map[string]interface{}{
-					"ipv4addr": ipv4,
-				},
-			},
+			"ipv4addr": ipv4,
 		}).
 		Put("/" + d.Id())
 	if handler := handleError(err, resp, wapiErr); handler != nil {
 		return handler
 	}
-	return resourceInfobloxHostRecordRead(d, meta)
+	return resourceInfobloxAnameRecordRead(d, meta)
 }
 
-func resourceInfobloxHostRecordDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceInfobloxAnameRecordDelete(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("\n[infoblox-provider] %s", "----------------- host record delete")
 	wapiErr := WapiError{}
 	resp, err := resty.R().
