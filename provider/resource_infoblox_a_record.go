@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-resty/resty"
 	"github.com/hashicorp/terraform/helper/schema"
+	"fmt"
 )
 
 func resourceInfobloxAnameRecord() *schema.Resource {
@@ -40,6 +41,13 @@ func resourceInfobloxAnameRecord() *schema.Resource {
 				Optional:    true,
 				ForceNew:    true,
 			},
+			"name_index_start": &schema.Schema{
+				Description: "Name generation index start",
+				Type:        schema.TypeInt,
+				Optional:    true,
+				ForceNew:    true,
+				Default:     1,
+			},
 			"ipv4": &schema.Schema{
 				Description: "The ip-address or function used to generate one",
 				Type:        schema.TypeString,
@@ -57,22 +65,36 @@ func resourceInfobloxAnameRecord() *schema.Resource {
 
 func resourceInfobloxAnameRecordCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("\n[infoblox-provider] %s", "----------------- host record create")
-	name := d.Get("name").(string)
-	domain := d.Get("domain").(string)
-	fqdn := name + "." + domain
-	ipv4 := d.Get("ipv4").(string)
-	ttl := d.Get("ttl").(int)
 
+	var name string
+	prefix := d.Get("name_prefix").(string)
+	pad    := d.Get("name_index_pad").(string)
+	domain := d.Get("domain").(string)
+	start  := d.Get("name_index_start").(int)
+	ipv4   := d.Get("ipv4").(string)
+	ttl    := d.Get("ttl").(int)
+
+	if prefix != "" && pad != "" {
+		names, err := getAvailableHostnames(prefix, pad, domain, "a", start, 1)
+		if err != nil {
+			return err
+		}
+		if len(names) == 0 {
+			return fmt.Errorf("Could not find a free hostname")
+		}
+		name = names[0]
+	} else {
+		name = d.Get("name").(string)
+	}
+
+	fqdn    := name + "." + domain
 	wapiErr := WapiError{}
+
 	resp, err := resty.R().
 		SetError(&wapiErr).
 		SetBody(map[string]interface{}{
 			"name": fqdn,
-			"ipv4addrs": []map[string]interface{}{
-				map[string]interface{}{
-					"ipv4addr": ipv4,
-				},
-			},
+			"ipv4addr": ipv4,
 			"ttl":     ttl,
 			"use_ttl": true,
 		}).

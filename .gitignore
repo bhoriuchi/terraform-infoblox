@@ -1,3 +1,4 @@
 sandbox/*tfstate*
 sandbox/terraform-provider-infoblox
 gosrc_amd64
+credentials.tf
